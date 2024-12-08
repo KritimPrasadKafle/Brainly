@@ -3,8 +3,9 @@ import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import z from "zod";
 import bcrypt from "bcrypt";
-import UserModel, { IUser } from "./db";
+import UserModel, { ContentModel, IUser } from "./db";
 import dotenv from "dotenv";
+import { userMiddleware } from "./middleware";
 
 require("dotenv").config();
 
@@ -69,11 +70,11 @@ app.post("/api/v1/signin", async (req, res) => {
       res.status(500).send("You are not registered");
     } else {
       const isMatch = await bcrypt.compare(password, user.password);
-      const token: string = jwt.sign({ username }, JWT_SECRET, {
+      const token: string = jwt.sign({ id: user._id }, JWT_SECRET, {
         expiresIn: "1h",
       });
       if (isMatch) {
-        res.status(200).send({ message: "token", token });
+        res.status(200).send({ token: token });
       } else {
         res.status(401).send("Invalid password");
       }
@@ -81,6 +82,46 @@ app.post("/api/v1/signin", async (req, res) => {
   } catch (error: any) {
     console.error("Error during signin:", error.message);
     res.status(500).json({ error: error.message });
+  }
+});
+
+app.post("/api/v1/content", userMiddleware, async (req, res) => {
+  try {
+    const { link, title } = req.body;
+
+    if (!link || !title) {
+      res.status(400).json({
+        message: "Link and title are required to create content",
+      });
+    }
+
+    const content = new ContentModel({
+      link,
+      title,
+      //@ts-ignore
+      userId: req.userId,
+      tags: [],
+    });
+
+    await content.save();
+
+    // Send successful response
+    res.status(201).json({
+      message: "Content added successfully",
+      content: {
+        link: content.link,
+        title: content.title,
+        userId: content.userId,
+        tags: content.tags,
+      },
+    });
+  } catch (error: any) {
+    // Handle unexpected errors
+    console.error("Error during content creation:", error.message);
+    res.status(500).send({
+      message: "Internal server error",
+      error: error.message,
+    });
   }
 });
 

@@ -1,4 +1,4 @@
-import { model, Schema, Document } from "mongoose";
+import mongoose, { model, Schema, Document } from "mongoose";
 
 // Define an interface for strong typing
 interface IUser extends Document {
@@ -16,6 +16,15 @@ const UserSchema = new Schema<IUser>({
 
 // Create the model
 const UserModel = model<IUser>("User", UserSchema);
+
+const ContentSchema = new Schema({
+  title: { type: String, required: true },
+  link: { type: String },
+  tags: [{ type: mongoose.Types.ObjectId, ref: "Tag" }],
+  userId: { type: mongoose.Types.ObjectId, ref: "User" },
+});
+
+export const ContentModel = model("Content", ContentSchema);
 
 export default UserModel;
 export { IUser };
